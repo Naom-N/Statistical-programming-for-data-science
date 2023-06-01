@@ -1,5 +1,5 @@
 ---
-title: "MTH - 696 - Final Exam"
+title: "Comprehensive Project"
 author: "Naom N"
 date: "2023-05-15"
 output: pdf_document
@@ -16,7 +16,7 @@ library(caret)
 
 ```{r}
 #Set working directory
-setwd('~/MSU/Msc Mathematics/Statistical programming for Data Science/Final')
+setwd('~/your/working/directory')
 
 #Load the data
 bus<-read.csv("bussiness.csv")
