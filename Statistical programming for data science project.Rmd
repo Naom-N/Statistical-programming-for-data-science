@@ -1,5 +1,5 @@
 ---
-title: "MTH 696 - FINAL PROJECT"
+title: "FINAL PROJECT"
 subtitle: "FINAL GRADE PREDICTION"
 author: "Naom N"
 date: "2023-04-23"
