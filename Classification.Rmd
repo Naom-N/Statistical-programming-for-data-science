@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
 
 ```{r}
 #setting working directory
-setwd('~/MSU/Msc Mathematics/Statistical programming for Data Science/Homeworks/hw 6')
+setwd('~/your/working/directory')
 
 #loading the data
 credit<-read.csv("credit-g.csv")
