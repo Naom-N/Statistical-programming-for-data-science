@@ -1,0 +1,392 @@
+---
+title: "MTH - 696 - Final Exam"
+author: "Naom N"
+date: "2023-05-15"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
+library(dplyr)
+library(tidyverse)
+library(caret)
+```
+
+\textbf{Preparing the data}
+
+```{r}
+#Set working directory
+setwd('~/MSU/Msc Mathematics/Statistical programming for Data Science/Final')
+
+#Load the data
+bus<-read.csv("bussiness.csv")
+
+#Read the first few rows
+head(bus)
+
+#Dimensions
+dim(bus)
+```
+
+\textbf{Q1: Processing the data}
+
+(a) Check the number of missing values for each column and calculate the proportion of missing. Then delete all observations that have missing values on Customer ID.
+
+```{r}
+#No. of missing values in each column
+colSums(is.na(bus))
+
+#Proportion
+round(colSums(is.na(bus))/nrow(bus), digits = 3)
+
+#Delete observations with missing values on Customer ID
+bus<-na.omit(bus)
+
+#Dimensions of new data
+dim(bus)
+
+```
+(b) Check the summary statistics for each column and summarize your finding on Quantity. Calculate the number of rows that have a negative value on Quantity and output the first 10 rows. Summarize your finding on invoice number for those negative orders.
+
+```{r}
+#Check summary statistics for each column
+summary(bus)
+
+#No of rows with negative value on quantity
+sum(bus$Quantity<0)
+
+#Dataset with negative quantity values
+negquantity<-bus[(bus$Quantity<0), ]
+
+#Output the first 10 rows with negative value on quantity
+head(negquantity,10)
+
+#Invoice number (head) results from the negative quantity value rows
+head(negquantity$InvoiceNo)
+tail(bus)
+```
+```{r, eval=FALSE}
+negquantity$InvoiceNo
+```
+
+\textbf{Note:}
+
+The column Quantity has a minimum negative quantity (80995) which is odd for this type of input. The maximum quantity is also too far from both the median and mean (5 and 12.06 respectively).
+All the invoice numbers seem to start with a letter (C).
+
+
+(c) Now you can check your finding from the previous part. Use verbs from dplyr to check if all observations with negative quantity have invoice number starts with “C”. In fact, all invoice numbers that start with “C” are cancelled transactions.
+
+```{r}
+#Subset to get only invoice numbers that start with "C"
+bus.inv<-bus%>%filter(str_detect(InvoiceNo, "^C"))
+
+#check if they have the same invoice numbers as the data in part (b)
+all.equal(negquantity$InvoiceNo, bus.inv$InvoiceNo)
+```
+
+(d) Convert the invoice date from character to datetime format with as.POSIXct and output the earliest and latest order date.
+```{r}
+
+bus$InvoiceDate <- as.POSIXct(bus$InvoiceDate, format = "%m/%d/%Y %H:%M")
+
+#Check the class
+class(bus$InvoiceDate)
+
+#Min and Max order date
+min(bus$InvoiceDate)
+max(bus$InvoiceDate)
+
+```
+
+(e) Check the unique number of Description and StockCode. The unique values of Description and StockCode should be equal since each stock code represents a unique product. If this is not the case, output head of the table with the number of unique StockCode for each unique ‘Description’ with verbs in dplyr. And similarly, output head of the table with number of unique Description for each unique StockCode.
+```{r}
+#Unique no. of description
+length(unique(bus$Description))
+
+#Unique no. of StockCode
+length(unique(bus$StockCode))
+```
+The two numbers are not the same. We will therefore proceed to printing out the first few rows
+```{r}
+#Description table with no of unique stockcodes
+bus%>%
+  group_by(Description)%>%
+  summarise(No_stockcode = length(unique(StockCode)))
+
+#StockCode table with number of unique desription
+bus%>%
+  group_by(StockCode)%>%
+  summarise(No_description = length(unique(Description)))
+```
+
+
+(f) Output all descriptions that have multiple stock codes, as well as all stock codes that have multiple descriptions. Then delete all products from the data set that either have multiple stock codes or multiple description. Output the dimension of the new data set.
+```{r}
+#Description with multiple stockcodes output
+desc.bus<-bus%>%
+  group_by(Description)%>%
+  summarise(No = length(unique(StockCode)))%>%
+  filter(No>1)
+
+#StockCode with multiple descriptions output
+stkcode.bus<-bus%>%
+  group_by(StockCode)%>%
+  summarise(No = length(unique(Description)))%>%
+  filter(No>1)
+
+#Delete products with either multiple stockcodes or descriptions
+bus<-anti_join(bus, stkcode.bus, by = "StockCode")
+bus<-anti_join(bus, desc.bus, by = "Description")
+
+#Dimensions of the dat
+dim(bus)
+```
+
+\textbf{Some Data Visualization}
+
+(a) Visualize the number of orders per month for data in 2011. What patterns do you see?
+```{r, warning=FALSE}
+bus%>%
+  mutate(year = as.POSIXlt(InvoiceDate)$year + 1900,
+         month = month(as.POSIXlt(InvoiceDate)))%>%
+  filter(year==2011)%>%
+  group_by(month)%>%
+  summarise(Total_orders = n())%>%
+  ggplot(aes(month, Total_orders))+
+  geom_point()+
+  geom_line()+
+  scale_x_discrete(limits = 1:12)
+```
+\textbf{Summary:}
+There is an increase in orders in the months of March, May, September, October and November with the highest being in November
+
+(b) Add a column called TotalPrice to the data set, which is the product of UnitPrice and Quantity. Make another plot similar to the previous part for TotalPrice per month for data in 2011. Do you observe similar patterns as the previous plot?
+```{r, warning=FALSE}
+bus%>%
+  mutate(TotalPrice = (Quantity * UnitPrice),
+         year = as.POSIXlt(InvoiceDate)$year + 1900,
+         month = month(as.POSIXlt(InvoiceDate)))%>%
+  filter(year==2011)%>%
+  group_by(month)%>%
+  summarise(Total_orders_price = sum(TotalPrice))%>%
+  ggplot(aes(month, Total_orders_price))+
+  geom_point()+
+  geom_line()+
+  scale_x_discrete(limits = 1:12)
+  
+```
+\textbf{Summary:}
+
+Yes they are somewhat similar. There is an increase in Total price of orders in the months of March, May, September, October and November with the highest being in November too.
+
+\textbf{Aggregate Data to Customer Level}
+
+Exclude cancelled transactions by limiting Quantity > 0
+(a) Create a table where there are two columns, one for CustomerID and one for Recency. Make sure you convert the column Recency into integers. Output the head.
+```{r}
+#Latest order date in data
+ltdate_data = max(bus$InvoiceDate)
+
+
+recency<-bus%>%
+  filter(Quantity>0)%>%
+  group_by(CustomerID)%>%
+  summarise(ltdate_cus = max(InvoiceDate),
+    Recency =as.integer(difftime(ltdate_data, ltdate_cus , units = "days")))%>%
+  select(CustomerID, Recency)
+
+#Ouput the head
+head(recency)
+         
+```
+
+(b) Create a table called frequency which has two columns, one for unique CustomerID and another column Frequency for the number of unique purchases for the customer. Output the head.
+
+```{r}
+frequency <- bus%>%
+  filter(Quantity>0)%>%
+  group_by(CustomerID)%>%
+  summarise(Frequency = n_distinct(InvoiceNo))
+
+#Output the head
+head(frequency)
+```
+(c) Create a table called money_value which has two columns, one for unique CustomerID and another column Money_Value for the sum of TotalPrice. Output the head
+
+```{r}
+money_value <- bus%>%
+  filter(Quantity>0)%>%
+  mutate(TotalPrice = Quantity*UnitPrice)%>%
+  group_by(CustomerID)%>%
+  summarise(Money_Value= sum(TotalPrice))
+
+#Ouput the head
+head(money_value)
+```
+(d) Join tables recency, frequency, and money_value by CustomerID to form a customer-level aggregated dataset called cust_df. Output the head
+
+```{r}
+cust_df<-full_join(recency,frequency, by = "CustomerID")
+cust_df<-full_join(cust_df, money_value, by = "CustomerID")
+
+#Output the head
+head(cust_df)
+```
+
+
+\textbf{Transform RFM Data}
+(a) Make a histogram for recency, frequency and money_value. Do they look normally distributed? If not, do they have the same direction of skewness?
+
+```{r}
+#Recency histogram
+hist(cust_df$Recency, probability = TRUE)
+
+#Frequency histogram
+hist(cust_df$Frequency, probability = TRUE)
+
+#Money_value histogram
+hist(cust_df$Money_Value, probability = TRUE)
+```
+
+\textbf{Summary}
+
+They are all skewed to the right(Have long tails to the right - more for Recency) therefore they are not normally distributed.
+
+
+(b) Add columns Recency_log, Frequency_log and Money_Value_log to table cust_df. And make histograms for the log-transformed variables. (Hint: As the Money_Value column contains zeros, one should use log(Money_Value+1) to transform the variable.)
+
+```{r}
+#Check for zeros
+length(which(cust_df$Recency==0))
+length(which(cust_df$Frequency==0))
+length(which(cust_df$Money_Value==0))
+
+#Add log - transformed variable columns
+cust_df<-cust_df%>%mutate(Recency_log = log(Recency+1), #has zeros
+                 Frequency_log = log(Frequency),
+                 Money_Value_log = log(Money_Value+1)) #has zeros
+
+#Recency_log histogram
+hist(cust_df$Recency_log, probability = TRUE)
+
+#Frequency_log histogram
+hist(cust_df$Frequency_log, probability = TRUE)
+
+#Money_value histogram
+hist(cust_df$Money_Value_log, probability = TRUE)
+```
+
+```{r}
+
+#Normalizing data
+scaler <- preProcess(cust_df[,-1], method = c('range'))
+cust_df_norm <- predict(scaler, cust_df[,-1])
+cust_df_norm$CustomerID <- cust_df$CustomerID
+
+```
+
+\textbf{Hierarchical Agglomerative Clustering}
+
+(a) Calculate the euclidean distance between the three log-transformed variables and save the distance matrix as data_dist.
+
+```{r}
+log_data<-cust_df[, c(5:7)]
+data_dist<-dist(log_data)
+```
+
+(b) Then conduct the hierarchical clustering with complete linkage, and plot dendrograms. Then cut the clustering tree into 4 clusters and output the number of observations in each cluster
+
+```{r}
+#Hierarchical clustering
+h_cust<-hclust(data_dist,  method = "complete")
+
+#Dendogram
+plot(h_cust)
+
+#Cut into 4 clusters and output the number of observations in each cluster
+cut4 <- cutree(h_cust, k = 4)
+table(cut4)
+
+```
+
+(c) Output a table with average Recency, Frequency and Money_Value for each cluster in the previous part.
+
+```{r}
+#Create hierarchical clusters column
+clusters <- as.factor(cut4)
+
+#Append this to our data
+cust_df<- cbind(cust_df, clusters)
+
+#Output the head
+head(cust_df)
+
+#Find average Recency, Frequency and Money_Value for each cluster
+cust_df%>%
+  group_by(clusters)%>%
+  summarise(Recency_mean = mean(Recency),
+            Frequency_mean = mean(Frequency),
+            Money_value_mean = mean(Money_Value))
+
+```
+
+(d) Based on the table above, which cluster seems to be most important to the company? Which cluster is the least important?
+
+\textbf{Answer:}
+
+Cluster 4 (has 76 observation - the least) seems to be important with the money value mean in that cluster being significantly big.
+Cluster 3 (1295 observations) is the least important with its means being the least.
+
+
+\textbf{K-Means Clustering}
+
+(a) Fit a 4-cluster K-means model to the scaled dataset cust_df_norm with 20 random draws of initial points. Output the number of observations in each cluster.
+(Hint: Build the K-means model with the log-transformed variables instead of the original scale in the scaled dataset. Set seed with set.seed(2023) for reproducibility.)
+
+```{r}
+#normalized log transformed variables dataset
+norm_data <-cust_df_norm[ ,c(4:6)]
+
+set.seed(2023)
+
+#K-means with K=4
+km.4 = kmeans(norm_data, 4, nstart=20)
+
+#Cluster sizes
+km.4$size
+```
+Cluster 1: 1432 observations, Cluster 2: 1139 observations, Cluster 3: 1029 observations and Cluster 4: 725 observations
+
+(b) Make a table similar to the one in 5(c) and answer which cluster is the most/least important to the company.
+
+```{r}
+#Create KMeans clusters column
+kclusters<-as.factor(km.4$cluster)
+
+#Append this to our data
+cust_df<- cbind(cust_df, kclusters)
+
+#Output the head
+head(cust_df)
+
+#Find average Recency, Frequency and Money_Value for each cluster
+cust_df%>%
+  group_by(kclusters)%>%
+  summarise(Recency_mean = mean(Recency),
+            Frequency_mean = mean(Frequency),
+            Money_value_mean = mean(Money_Value))
+```
+\textbf{Note:}
+
+Cluster 4 (has 725 observation - the least) seems to be important with the money value mean in that cluster being significantly big.
+Cluster 3 (1029 observations) is the least important with its means being the least.
+
+(c) Visualize the clusters from the previous part. Summarize your finding and point out the if there is anything that can be improved.
+```{r}
+plot(norm_data, col=(km.4$cluster+1), 
+     main="K-Means Clustering Results with K=4", pch=20, cex=2)
+```
+\textbf{Note:}
+
+There might be need to change the K variable so that there is more distinction in the clusters.
