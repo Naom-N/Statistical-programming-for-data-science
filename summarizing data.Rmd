@@ -342,7 +342,7 @@ a). Download and import the diamond data set from Blackboard
 
 ```{r}
 #setting the working directory
-setwd('~/MSU/Msc Mathematics/Statistical programming for Data Science/Homeworks/hw 2')
+setwd('~/your/working/directory')
 
 #reading the data as a .csv file
 diamond<-read.csv("diamonds.csv")
