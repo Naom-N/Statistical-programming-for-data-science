@@ -1,0 +1,202 @@
+---
+title: "visualization"
+author: "Naom Nyambariga"
+output: pdf_document
+date: "2023-03-01"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
+require(dplyr)
+```
+
+##QUESTION 1
+#Penguins Data
+
+Using the penguins data set from the palmerpenguins package.
+a).  Create a scatterplot of bill_length_mm against bill_depth_mm where individual species are colored and a regression line is added to each species. What do you observe about the association of bill depth and bill length? (Hint: Try ?geom_smooth.)
+
+```{r}
+library(palmerpenguins)
+library(ggplot2)
+ggplot(na.omit(penguins))+
+  geom_point(mapping = aes(x=bill_depth_mm, y = bill_length_mm,color=species))+
+  geom_smooth(mapping = aes(x=bill_depth_mm, y = bill_length_mm, linetype=species))
+```
+Summary:
+
+From the above plot, we can observe that for all three species, as the bill depth increases, the bill length also increases. Overall, the Gentoo have the longest bill but with short depth while Adelie have the longest depth bill but short length.
+
+
+b). Repeat the same scatterplot but now separate your plot into facets by sex. How would you summarize the association between bill depth and bill length?
+
+```{r}
+ggplot(na.omit(penguins))+
+  geom_point(mapping = aes(x=bill_depth_mm, y = bill_length_mm,color=species))+
+  geom_smooth(mapping = aes(x=bill_depth_mm, y = bill_length_mm, linetype=species))+
+  facet_grid(.~sex)
+```
+Summary:
+
+The male species have generally high bill depths and lengths than female. Overall, there is no clear relationship as not everything all species are showing an upward trend in the bill depth and length relations.
+
+
+##QUESTION TWO: 
+#PISA Data
+
+The 2015 administration of the OECD’s Programme for International Student Assessment (PISA)
+tested 540,000 15-year-old students from 72 countries in reading, mathematics and science other information about students, their family and home, and their school and learning experiences.
+
+a). Make a boxplot of science scores (science) by country (CNT). Comment on the plot
+
+```{r}
+#set the working directory
+setwd('~/MSU/Msc Mathematics/Statistical programming for Data Science/Homeworks/hw 3')
+
+library(data.table)
+pisa<-fread("pisa2015sub1.csv")
+
+#outputting the first few row of the data
+head(pisa)
+
+ggplot(pisa,mapping = aes(x = science,y = CNT))+
+  geom_boxplot()
+```
+
+Comment:
+
+There are several outliers as indicated by the points outside the box plots. the median scores are very different from country to country.
+
+
+b). Flip the boxplots in part (a) so that the labels can be displayed in a better way
+
+```{r}
+ggplot(pisa,mapping = aes(x = science,y = CNT))+
+  geom_boxplot()+
+  coord_flip()+
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+c). Calculate the mean science scores for each country and display them on the boxplots in part (b). To be more specific, the mean scores should be displayed in diamond shape and blue color. (Hint: Try ?stat_summary.)
+
+```{r}
+
+ggplot(pisa,mapping = aes(x = science,y = CNT))+
+  geom_boxplot()+
+  stat_summary(fun = "mean", shape="diamond", color="blue",size = 1)+
+  coord_flip()+
+  theme(axis.text.x = element_text(angle = 90))
+  
+```
+
+d). Reorder the boxplots in part (c) by mean science scores of each country.
+(Hint: Try ?reorder and implement it in the mapping of the boxplots. )
+
+```{r}
+ggplot(pisa,mapping = aes(x = science,(y = (pisa$CNT = with(pisa,reorder(CNT,science,mean))))))+
+  geom_boxplot()+
+  stat_summary(fun = "mean", shape="diamond", color="blue",size = 1)+
+  coord_flip()+
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+e). Add a red dashed vertical (*we changed this into horizontal line in class*) reference line of the overall mean science scores in the plot of part (d). (Hint: Try ?geom_line and figure out the yintercept.)
+
+```{r}
+ggplot(pisa,mapping = aes(x = science,(y = (pisa$CNT = with(pisa,reorder(CNT,science,mean))))))+
+  geom_boxplot()+
+  stat_summary(fun = "mean", shape="diamond", color="blue",size = 1)+
+  coord_flip()+
+  theme(axis.text.x = element_text(angle = 90))+
+  geom_vline(xintercept=mean(pisa$science),linetype="dashed", color = "red")
+  
+#if i try using geom_hline, it does not output the line because of the coordinate flip 
+```
+
+f). Now let’s add the region information. In the plot of part (e), please distinguish the (fill) color of the boxplots by region variable. Summarize your findings
+
+```{r}
+ggplot(pisa,mapping = aes(x = science,(y = (pisa$CNT = with(pisa,reorder(CNT,science,mean))))))+
+  geom_boxplot(aes(fill = Region))+
+  stat_summary(fun = "mean", shape="diamond", color="blue",size = 1)+
+  coord_flip()+
+  theme(axis.text.x = element_text(angle = 90))+
+  geom_vline(xintercept=mean(pisa$science),linetype="dashed", color = "red")
+
+```
+Summary
+Asia,Australia, Europe and two countries of the N. America region have their average scores above the average science score. S.America and middle - East regions are below the average score.
+
+
+##QUESTION THREE
+#Revisit the pisa data set. Now we will focus on science scores by gender and region
+a). Make a histogram of science scores (science) with fill color distinguished by Region for both male and female. The histograms should be displayed side by side. Summarize your findings.
+
+```{r}
+ggplot(pisa, mapping = aes(science))+
+  geom_histogram(aes(fill = Region))+
+  facet_wrap(~sex)
+```
+Findings:
+
+The results have a long tail to the right - there are more high scores. 
+More females counts than male counts.
+more students in Asia, Australia and Europe regions did well compared to the other regions.
+
+
+b). The a subset of the pisa data set by keeping the first observation of every 50 observations, namely pisa_small. That is, observations on row 1, row 51, row 101, row 151, · · ·. Then make a pairwise plot for reading, science, math and sex with ggpairs() from the GGally package. Summarize your findings.
+
+```{r}
+library(GGally)
+pisa_small<-pisa[(seq(1,nrow(pisa),50)), ]
+ggpairs(pisa_small,columns = c("reading", "science","math","sex"))
+
+```
+
+Summary:
+
+All the data follows a somewhat normal distribution with some tails. Math does look like it can be bi-modal.
+females median is higher in reading as illustrated by the box plots. The median for science looks similar for all sexes while the male seem to be having a slightly higer median in math.
+The data generally has more femaes than males.
+All the subjects show an upward trend with each other and are all postively correlated with math and science having an almost perfect correlation at 0.937
+
+
+c). In pisa_small, make a scatter plot of science score (science) versus weekly learning time (learning) overlayed with a regression line for each gender (sex) group. Label the legends appropriately and move them underneath the plot. How would you summarize the patterns?
+
+```{r}
+ggplot(pisa_small, aes(x = learning, y = science))+
+  geom_point()+
+  geom_smooth(method = "lm",aes(color=sex))+
+  theme(legend.position = "bottom")
+```
+Summary:
+
+The linear regression does not seem to fit this data correctly. 
+But according to the lines, they all show an upward trend. As weekly learning time increases, science scores increase too - rapidly for females than males
+
+
+d). In pisa_small, make a scatter plot of weekly learning time (learning) versus science score (science) with color distinguished by gender (sex). Then overlay a regression line of learning versus science for each region (Region) by setting fill = Region. Label appropriately
+
+```{r}
+ggplot(pisa_small, aes(x = science, y = learning))+
+  geom_point(aes(color = sex))+
+  geom_smooth(method = "lm",aes(fill = Region))+
+  theme(legend.position = "bottom")
+```
+Summary:
+
+S. America - the pink band is showing an upward trend. An increase in science score will increase weekly learning time. 
+Some regions like Europe seem steady. there is no relation between the variables.(it is a straight line)
+Overall, the regression lines dont seem to fit this data well.
+
+e). The prediction bands in the previous part are overlapped, thus is less informative. Please facet the plot such that the different gender groups are displayed on rows and different regions are displayed on columns. Label appropriately
+
+```{r}
+ggplot(pisa_small, aes(x = science, y = learning))+
+  geom_point(aes(color = sex))+
+  geom_smooth(method = "lm",aes(fill = Region))+
+  theme(legend.position = "bottom",axis.text.x = element_text(angle = 90))+
+  facet_grid(sex~Region)
+
+```
+
