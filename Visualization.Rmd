@@ -51,7 +51,7 @@ a). Make a boxplot of science scores (science) by country (CNT). Comment on the 
 
 ```{r}
 #set the working directory
-setwd('~/MSU/Msc Mathematics/Statistical programming for Data Science/Homeworks/hw 3')
+setwd('~/your/working/directory')
 
 library(data.table)
 pisa<-fread("pisa2015sub1.csv")
