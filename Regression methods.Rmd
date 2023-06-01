@@ -16,7 +16,7 @@ library(tidyverse)
 
 ```{r}
 #setting the working directory.
-setwd('~/MSU/Msc Mathematics/Statistical programming for Data Science/Homeworks/hw 5')
+setwd('~/your/working/directory')
 
 #Reading the data
 cars<-read.table(file = "cars.txt")
