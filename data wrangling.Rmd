@@ -17,7 +17,7 @@ require(ggplot2)
 Flights, weather and planes data
 ```{r}
 #set the working directory
-setwd('~/MSU/Msc Mathematics/Statistical programming for Data Science/Homeworks/hw 4')
+setwd('~/your/working/directory')
 
 #reading the data
 load("flights.rda")
