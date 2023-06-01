@@ -1,0 +1,153 @@
+---
+title: Introduction to R
+author: Naom N
+output: pdf_document
+date: "2023-02-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question one: Nuts and Bolts of R
+a.) Using seq() function, create a sequence from -2.0 to 2.0 with increments of 0.25. What are the sample mean and standard deviation of theses numbers?
+
+```{r}
+a<-seq(-2,2,0.25)
+mean(a)
+sd(a)
+```
+b.) Using seq() function, create a sequence from -4.0 to 4.0 with increments of 0.5. What are the sample mean and standard deviation of theses numbers?
+
+```{r}
+b<-seq(-4,4,0.5)
+mean(b)
+sd(b)
+```
+c.) Compare the means and standard deviations from part (a) and (b). What do you conclude and explain why.
+
+Answer:
+The means are the same but the standard deviations are not.
+Since the standard deviation measures dispersion from the mean, the second sequence will have a higher deviation as the numbers are spread out far from 0 compared to the first sequence.
+
+
+d.) Place the two sequences from parts a and b into a 17 × 2 matrix as rows and find the sum of each row of the matrix. Try both for loop and apply()
+
+```{r}
+c<-matrix(c(a,b),ncol=2)
+
+for (i in 1:17) {
+  print(sum(c[i,]))
+}
+
+apply(c, 1, sum)
+```
+
+##Question two: The standard Normal distribution
+a.) Write a function whose arguments are a vector and a number. The function should output the proportion of values in the vector less than the number. Print your function code here
+```{r}
+func=function(d,e){
+  mean(d<e)
+}
+```
+
+b.) Take 10,000 draws from the normal distribution with mean five and standard deviation one. (Hint: Use the function, rnorm(), to do this.) Store the 10,000 draws in a vector, but do not print the vector here. Print the mean and standard deviation of the numbers. Also make a histogram of the numbers and have a blue dashed density line fitted above.(Hint: Check the help file of lines function.)
+
+```{r}
+draws<-rnorm(10000,5,1)
+mean(draws)
+sd(draws)
+hist(draws, probability = TRUE)
+lines(density(draws),col='blue')
+```
+c.) Using your function from part (a) and your vector from part (b), what is an estimate of the probability that a normal random variable is less than 4 to be?
+
+```{r}
+func(draws,4)
+```
+
+d.) How do you expect the true probability that this random variable is greater than 6 to compare to the true probability that it is less than 4? Give evidence of this using your histogram
+
+Answer:
+The two probabilities will be close to each other
+The histogram is almost perfectly symmetrical and we can see that the number probability
+on the y-axis corresponding to both the region from 0-4 and 6-10 is between 0.1 and 0.2
+
+
+##Question Three: Rock-paper-scissors
+a.) Set up the rock paper scissors game using the following, and paste your code as the answer to this part.
+Make sure you have the seed set so that you can reproduce the results.
+• Specify a vector, x, of length 10 containing a random sample of the words ‘Rock’, ‘Paper’, or ‘Scissors’.
+• Specify another such vector, y, of length 10 containing a random sample of the words ‘Rock’, ‘Paper’, or ‘Scissors’.
+• Create a 2 × 10 matrix with x in the first row and y in the second row. Output this matrix.
+• Create a vector of length 10 called ‘win’. In each element of the vector, record an ‘x’ if player ‘x’ won, a ‘y’ if player ‘y’ won, and a ‘d’ if the players drew (tied). Do this by writing a for loop with if...else... statement. Output win.
+
+```{r}
+set.seed(1)
+n<-10
+X<-sample(c("rock","paper","scissors"),n,replace = TRUE)
+Y<-sample(c("rock","paper","scissors"),n,replace = TRUE)
+rps_game<-as.matrix(rbind(X,Y))
+rps_game
+
+win<-rep(NA,n)
+for (i in 1:length(win)) {
+win[i]=(  if(rps_game[1,i] == rps_game[2,i]){("d")
+  }
+  else if(rps_game[1,i]=="rock" & rps_game[2,i]=="scissors" | rps_game[1,i]=="scissors"
+          & rps_game[2,i]=="paper" |rps_game[1,i]=="paper" & rps_game[2,i]=="rock" ){
+    ("x")
+  }
+  else{
+    ("y")
+  })
+}
+win
+```
+
+b.) Using your vector called win, what are estimates for: the probability that player ‘x’ won, the probability that player ‘y’ won, and the probability that the players tied?
+
+```{r}
+
+probs<-matrix(c(x_win<-mean(win=="x"),y_win<-mean(win=="y"),drew<-mean(win=="d")),
+               nrow=3,ncol=1)
+rownames(probs)<-c("X_prob","Y_prob","Draw")
+probs
+```
+
+c.) Run your code again for a larger number of trials (i.e., for vector longer than length 10). Do this by writing a function f.x with number of trials as input and probabilities of winning as outputs. Try 20, 50 and 100 trials with f.x.
+
+```{r}
+set.seed(2)
+f.x=function(g){
+X<-sample(c("rock","paper","scissors"),g,replace = TRUE)
+Y<-sample(c("rock","paper","scissors"),g,replace = TRUE)
+rps_game<-as.matrix(rbind(X,Y))
+rps_game
+
+win<-rep(NA,g)
+for (i in 1:length(win)) {
+win[i]=(  if(rps_game[1,i] == rps_game[2,i]){("d")
+  }
+  else if(rps_game[1,i]=="rock" & rps_game[2,i]=="scissors" | rps_game[1,i]=="scissors"
+          & rps_game[2,i]=="paper" |rps_game[1,i]=="paper" & rps_game[2,i]=="rock" ){
+    ("x")
+  }
+  else{
+    ("y")
+  })
+}
+probs<-matrix(c(x_win<-mean(win=="x"),y_win<-mean(win=="y"),drew<-mean(win=="d")),
+               nrow=3,ncol=1)
+rownames(probs)<-c("X_prob","Y_prob","Draw");probs
+}
+f.x(20)
+f.x(50)
+f.x(100)
+```
+
+d.) What do you notice about the probability estimates from parts (b) and (c)?
+
+Answer:
+The probabilities are slowly getting close to each other as the number of trials increases.
+
