@@ -1,0 +1,311 @@
+---
+title: "Data wrangling"
+author: "Naom Nyambariga"
+date: "2023-03-13"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(tidyr)
+require(dplyr)
+require(ggplot2)
+```
+
+##QUESTION 1
+
+Flights, weather and planes data
+```{r}
+#set the working directory
+setwd('~/MSU/Msc Mathematics/Statistical programming for Data Science/Homeworks/hw 4')
+
+#reading the data
+load("flights.rda")
+load("weather.rda")
+load("planes.rda")
+
+#Displaying the first few rows
+head(flights)
+head(weather)
+head(planes)
+```
+
+a). Make a table of the proportion of cancelled flights (fights with missing departure/arrival delay time) for each month in the flights data set. What month had the highest proportion of cancelled fights? What month had the lowest?
+(Hint: Check ?dplyr::context to find a way of getting the current group size.)
+
+
+```{r}
+my_flights <- flights %>%
+  group_by(month) %>%
+  summarize(cancelled =  sum(is.na(dep_time)| is.na(arr_delay)),
+            total = n(),
+            prop_cancelled = cancelled/total *100) %>%
+  arrange(prop_cancelled)
+
+my_flights
+
+```
+
+Summary:
+
+November (11) has the least number of cancelled flights at 0.489% and March (3) has the highest number of cancelled flights at 5.435%
+
+
+b). Based on the results in part (a), make a plot with ggplot2 to show the change in proportion of cancelled flights over month (in the ascending order). Please contain both dots and lines linking the dots in the plot. Also formulate the x-axis appropriately with scale_x_discrete(). Interpret any seasonal patterns.
+(Hint: Make sure you order the table by month before you make the plot.)
+
+```{r}
+my_flights_b <- flights %>%
+  group_by(month) %>%
+  summarize(cancelled =  sum(is.na(dep_time) | is.na(arr_delay)),
+            total = n(),
+            prop_cancelled = cancelled/total *100) %>%
+  arrange(month)
+my_flights_b
+ggplot(my_flights_b, mapping = aes(x = month, y = prop_cancelled))+
+  geom_point()+
+  geom_line()+
+  scale_x_discrete(limits = 1:12)
+
+```
+
+Summary:
+
+There is a spike in cancellation in February, March and September(probably because of bad weather)
+and very low cancellation around November (Thanksgiving holiday) and April (Easter holiday)
+
+c). In the flights data set, which of the three major NYC airports (origin) has a better on time percentage for departing flights? Here a flight is called “delayed” if the departure time is within 5 minutes of the scheduled departure time, i.e. dep_delay < 5
+
+```{r}
+#add a column with information on whether fkight is delayed or on time
+my_flights_c<-flights%>%
+  mutate(dep_delay_flights = ifelse(dep_delay <5 ,"on_time", "delayed"))
+  
+#getting the on_time percentage
+my_flights_c %>% 
+  group_by(origin)%>%
+  summarise(Total = n(),
+            on_time_flights = sum(na.omit(dep_delay_flights == "on_time")),
+            on_time_percent = on_time_flights/Total * 100)%>%
+  arrange(on_time_percent)
+
+
+```
+
+Summary:
+
+LGA has better on time percentage for departing planes at 68.26% of the planes had a delay of less than 5 minutes
+
+d). Based on your findings in the previous part, make a bar plot for departures from each of the three major NYC airports. The bars should be filled with different colors for on-time flights and delayed flights.
+
+```{r}
+my_flights_c %>% 
+  group_by(origin)%>%
+  ggplot(mapping = aes(origin))+
+  geom_bar(aes(fill = dep_delay_flights))
+```
+
+e). Use the weather data set from Blackboard. On how many days was there precipitation in the New York area for each month?
+(Hint: Note there are repeated observations and the distinct function in dplyr can be useful to count the distinct days.)
+
+```{r}
+my_weather<-weather %>%
+  filter(precip !=0 |precip !="NA") %>% # add precip !="NA". It changes the numbers
+  distinct(month, day) %>% 
+  group_by(month)%>%
+  summarise(n = n())%>%
+  arrange(month)
+my_weather
+```
+
+f). Make a plot similar to part (b). What do you observe in combine with the results from part (b)?
+
+```{r}
+ggplot(my_weather, mapping = aes(x = month, y = n))+
+  geom_point()+
+  geom_line()+
+  scale_x_discrete(limits = 1:12)
+```
+
+Summary:
+
+There is a somewhat high precipitation in march when the number of cancelled flights is high and very a low precipitation in November when there is a low cancellation proportion. Further investigation might be required for why there is a high cancellation in September.
+
+g). Use the flights and plane tables. What is the oldest plane (specified by the tailnum variable) that flew from New York City airports in 2013?
+(Hint: Calculate the age of a plane by subtracting the manufactured year from 2013 after you join flights and plane.
+
+```{r}
+#change the year variable in planes  - to distinguish between year in flights and year in planes
+planes<-rename(planes, manufacture_year = year)
+
+#joining the two datasets
+flights_planes<-full_join(flights, planes, by = "tailnum")
+
+
+flights_planes%>%
+  filter(manufacture_year !=0)%>%
+  mutate(age = (2013 - manufacture_year))%>%
+  select(manufacturer, model, tailnum, age, year)%>%
+  arrange(desc(age))%>%head()
+
+```
+
+There is no plane that flew from New York City airports in 2013. The data is for the yera 2017 only
+
+```{r}
+unique(flights_planes$year)
+```
+Summary:
+
+Otherwise, it will be a CESSNA with tail number N172AA and it is 59 years old.
+
+
+
+##QUESTION 2
+
+Health Care Data Read the health care coverage dataset from Blackboard using read_csv() and name the data set as coverage. A detailed description about the column names can be found here.
+(Hint: You need to skip the first two lines with the skip option and read up to the 52nd state with the n_max option.)
+
+```{r}
+#loading the data
+#NOTE: The first row is not a state
+library(readr)
+coverage<-read_csv("healthcare-coverage.csv", skip = 2, n_max = 52)
+#does n_max need to be 53 since the first row is not a state?
+
+#outputting the first rows
+head(coverage)
+
+```
+
+
+a). Output the column names of coverage and make sure the column names look appropriate. Also check the dimension of coverage and make sure you have a 52 × 29 tibble. You can also access the full column specification for this data by spec(coverage).
+
+```{r}
+#checking column specifications
+spec(coverage)
+
+# adding a dot to the two columns names X2015__Other Public and X2016__Other Public
+# coverage<-coverage%>%rename_all((make.names(.)))
+
+# checking the names again 
+# colnames(coverage)
+
+#checking the dimension
+dim(coverage)
+
+```
+
+b). Convert all year-based columns in coverage to integer using mutate(across(...)).
+(Hint: Read this for the across() function.) Output coverage.
+
+```{r}
+# coverage<-coverage%>%
+#   mutate(across(where(is.double),as.integer))
+
+coverage<-coverage%>%
+  mutate(across(c(2:29),as.integer))
+
+#outputting coverage
+coverage
+```
+
+c). Further tidy the data set and convert it to a long data format as shown below. Save the new data set as coverage_long. Output coverage_long.
+(Hint: Try ?tidyr::separate to separate a column into two with a specified separator. Also make convert = TRUE so that the integers can be converted.)
+
+```{r}
+
+coverage_long<-coverage%>%pivot_longer(cols = c(2:29),
+                        names_to = "year_type",
+                        values_to = "tot_coverage")%>%
+  separate(year_type, c("year", "type"), sep = "__", convert = TRUE)
+
+#outputting the first few rows
+coverage_long
+```
+
+d). Download and read the state_data from Blackboard. Then join it to coverage_long appropriately so that the state information like abbreviation (abb) and region is added to coverage_long. Output coverage_long.
+
+```{r}
+state_data<-read.csv("state_data.csv")
+
+#outputting the first rows
+head(state_data)
+
+coverage_long<-left_join(coverage_long, state_data, by = "Location")
+
+#Outputting the first few row of the appended coverage_long data
+coverage_long
+```
+
+e). Download and read the health care spending data set in the long format as spending_long from Blackboard. Then join coverage_long and spending_long into hc so that observations for locations from years where both coverage and spending information are available are kept. Output hc.
+(Hint: You will have two primary keys (Location and year) to match.)
+```{r}
+spending_long<-read.csv("healthcare-spending-long.csv")
+
+#Outputting the first few rows
+head(spending_long)
+
+#Joining coverage_long and spending_long
+hc<- inner_join(coverage_long, spending_long, by = c("Location","year"))
+hc
+```
+
+
+(f) Filter out the country-level summary row by keeping rows where Location is not United States in hc. Output hc.
+
+```{r}
+hc<-hc%>%filter(Location!="United States")
+hc
+```
+
+g). If you make a frequency table of type in hc you will see there are multiple types of health care coverage. Among them, we will take the Total type, which is not really a formal type of health care coverage and instead is the total number of people in the state. Create a data set for total population size ( tot_coverage) per state (Location) at each year (year) named pop from hc. Output pop.
+(Hint: There are supposed to be three columns in pop in the order of Location, year and tot_coverage.)
+
+```{r}
+#The frequency table
+table(hc$type)
+
+#taking the subset pop
+pop<-hc%>%
+  filter(type=="Total")%>%
+  select(Location, year, tot_coverage)%>%
+  rename(total_population = tot_coverage) #i rename to remove ambiguity.
+
+#outputting pop
+pop
+
+```
+
+h). Now remove the Total type from hc and also add the population level information by joining pop to hc appropriately. Output hc after the join.
+
+```{r}
+#removing the total type from hc
+hc<-hc%>%
+  filter(type !="Total") %>%
+#adding population level information
+  
+  left_join(pop, by = c('Location' = 'Location', 'year' = 'year'))
+  
+
+#outputting hc
+hc
+```
+
+i). Instead of only storing the absolute number of people who are covered (tot_coverage), we want to calculate the proportion of people who are under coverage in each state, year and type, storing this information as prop_coverage in hc. Output prop_coverage for Alabama at year 2013 and check if it adds to 1.
+(Hint: You can check your work by verifying if the sum of coverage proportion for each state at each year equals to 1.)
+
+```{r}
+prop_coverage <- hc%>%
+  filter(Location == "Alabama" & year == 2013)%>%
+  mutate(props =tot_coverage/total_population)%>%
+  select(Location, year, type, tot_coverage, total_population, props)
+
+#outputting the prop_coverage
+prop_coverage
+
+#checking the sum
+sum(prop_coverage$props)
+  
+```
+
