@@ -19,7 +19,7 @@ In this section, we will prepare our data and visualize some of the relationship
 
 ```{r}
 #setting working directory
-setwd('~/MSU/Msc Mathematics/Statistical programming for Data Science/Final project')
+setwd('~/your/working/directory')
 
 #Read the data
 math<-read.table("student-mat.csv",sep=";",header=TRUE)
