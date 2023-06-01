@@ -1,0 +1,472 @@
+---
+title: "Summarizing data - bingo game & cleaning data"
+author: "Naom Nyambariga"
+date: "2023-02-21"
+output:
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+##QUESTION 1
+#Bingo
+a). Randomly generate a classic 5*5 Bingo card of numbers
+
+
+```{r}
+# generate columns
+  col1 <- sample(1:15, 5, replace = F)
+  col2 <- sample(16:30, 5, replace = F)
+  col3 <- sample(31:45, 5, replace = F)
+  col4 <- sample(46:60, 5, replace = F)
+  col5 <- sample(61:75, 5, replace = F)
+  
+  # append columns to create the bingo board 
+  bingo_board<-c(col1,col2,col3,col4,col5)
+```
+
+b). Randomly select numbers from 1 to 75 without replacement, and “mark” the corresponding number on your card computationally however you choose.In total, 35 numbers will be randomly selected
+
+```{r}
+round_answers <- sample(1:75, 35, replace = F)
+```
+
+
+c). As soon as all the numbers in a row or column or either diagonal have been marked, the game ends and you win. Create a result object that tells whether you won by row, column, or diagonal
+```{r}
+
+  # generate bingo results for the current round
+  round_answers <- sample(1:75, 35, replace = F)
+
+  # mark the winning bingo cells in 5x5 grid
+  for (j in 1:25) {
+    bingo_board[j] = (
+      if ((bingo_board[j] %in% round_answers) == TRUE) {
+        0
+      }
+      else{
+        1
+      }
+    )
+  }
+  bingo_ans_mat <- matrix(bingo_board, 5, 5)
+  bingo_ans_mat[3, 3] <- 0
+  
+win_type <- "No winner"
+  # verify the direction of the winning bingo set
+  for (k in 1:5) {
+    # check if there is winner by  row
+    if (sum(c(bingo_ans_mat[k, ])) == 0) {
+      win_type <- "won by row"
+      break
+    }
+    # check if there is winner by  column
+    if (sum(c(bingo_ans_mat[ ,k])) == 0) {
+      win_type <- "won by column"
+      break
+    }
+  }
+  
+  # check if there is a diagonal winner
+  if (sum(c(
+    bingo_ans_mat[1, 1],
+    bingo_ans_mat[2, 2],
+    bingo_ans_mat[3, 3],
+    bingo_ans_mat[4, 4],
+    bingo_ans_mat[5, 5]
+  )) ==
+  0 |
+  sum(c(
+    bingo_ans_mat[5, 1],
+    bingo_ans_mat[4, 2],
+    bingo_ans_mat[3, 3],
+    bingo_ans_mat[2, 4],
+    bingo_ans_mat[1, 5]
+  )) ==
+  0) {
+    win_type <- "won by diagonal"
+    }
+```
+
+
+
+d). Using this setup, play the game 25 times to estimate the probability of winning by marking a row, a column, or a diagonal set of spaces
+
+```{r}
+    bingo_game<-function(num_iterations,n) {
+    experiment_win<-c()
+    for (i in 1:num_iterations) {
+      
+      total_wins <-c()
+      for (i in 1:n) {
+        
+        # generate columns
+        col1 <- sample(1:15, 5, replace = F)
+        col2 <- sample(16:30, 5, replace = F)
+        col3 <- sample(31:45, 5, replace = F)
+        col4 <- sample(46:60, 5, replace = F)
+        col5 <- sample(61:75, 5, replace = F)
+        
+        # append columns to create the bingo board 
+        bingo_board<-c(col1,col2,col3,col4,col5)
+        
+        # generate bingo results for the current round
+        round_answers <- sample(1:75, 35, replace = F)
+        
+        # mark the winning bingo cells in 5x5 grid
+        for (j in 1:25) {
+          bingo_board[j] = (
+            if ((bingo_board[j] %in% round_answers) == TRUE) {
+              0
+            }
+            else{
+              1
+            }
+          )
+        }
+        bingo_ans_mat <- matrix(bingo_board, 5, 5)
+        bingo_ans_mat[3, 3] <- 0
+        
+        win_type <- "No winner"
+        # verify the direction of the winning bingo set
+        for (k in 1:5) {
+          # check if there is winner by  row
+          if (sum(c(bingo_ans_mat[k, ])) == 0) {
+            win_type <- "won by row"
+            break
+          }
+          # check if there is winner by  column
+          if (sum(c(bingo_ans_mat[ ,k])) == 0) {
+            win_type <- "won by column"
+            break
+          }
+        }
+        
+        # check if there is a diagonal winner
+        if (sum(c(
+          bingo_ans_mat[1, 1],
+          bingo_ans_mat[2, 2],
+          bingo_ans_mat[3, 3],
+          bingo_ans_mat[4, 4],
+          bingo_ans_mat[5, 5]
+        )) ==
+        0 |
+        sum(c(
+          bingo_ans_mat[5, 1],
+          bingo_ans_mat[4, 2],
+          bingo_ans_mat[3, 3],
+          bingo_ans_mat[2, 4],
+          bingo_ans_mat[1, 5]
+        )) ==
+        0) {
+          win_type <- "won by diagonal"
+        }
+        
+        # append the winning bingo type to out total_wins vector
+        total_wins <- append(total_wins, win_type)
+      }
+      total_wins
+      
+      #append total wins to experiment_win vector
+      experiment_win<-append(experiment_win, total_wins)
+    }
+    experiment_win
+    }
+    
+    bingo_game(1,25)
+    
+```
+i).  A table with probability estimation for winning by row, column, diagonal and probability of fail for 10 experiments
+
+```{r}
+experiments_10<-bingo_game(10,25)
+prop.table(table(experiments_10))
+```
+ii). A histogram for the winning probability among 100 experiments (no need to be categorized by row/column or diagonal).
+
+```{r}
+#where 0 represents no winner and 1 a winner
+
+experiments_100 <- bingo_game(100,25)
+numeric_wins <- 1 * (experiments_100 != "No winner")
+hist(numeric_wins,  breaks = 2, freq = FALSE)
+
+```
+e). Using the same setup, play the game 250 times to estimate the probability of winning by marking a row, a column, or a diagonal set of spaces
+
+i.) a table with probability estimation for winning by row, column, diagonal and probability of fail for 10 experiments
+
+```{r}
+experiments2_10<-bingo_game(10,250)
+prop.table(table(experiments2_10))
+
+```
+ii). a histogram for the winning probability among 100 experiments (no need to be categorized by row/column or diagonal)
+
+```{r}
+#where 0 represents no winner and 1 a winner
+
+experiments2_100 <- bingo_game(100,250)
+numeric_wins2 <- 1 * (experiments2_100 != "No winner")
+hist(numeric_wins2,  breaks = 2, freq = FALSE)
+```
+f). In another variation of Bingo, a wining card also can occur when each of the four corners is marked
+
+i.) your bingo function
+
+```{r}
+  bingo_game2<-function(num_iterations,n) {
+    experiment_win<-c()
+    for (i in 1:num_iterations) {
+      
+      total_wins <-c()
+      for (i in 1:n) {
+        
+        # generate columns
+        col1 <- sample(1:15, 5, replace = F)
+        col2 <- sample(16:30, 5, replace = F)
+        col3 <- sample(31:45, 5, replace = F)
+        col4 <- sample(46:60, 5, replace = F)
+        col5 <- sample(61:75, 5, replace = F)
+        
+        # append columns to create the bingo board 
+        bingo_board<-c(col1,col2,col3,col4,col5)
+        
+        # generate bingo results for the current round
+        round_answers <- sample(1:75, 35, replace = F)
+        
+        # mark the winning bingo cells in 5x5 grid
+        for (j in 1:25) {
+          bingo_board[j] = (
+            if ((bingo_board[j] %in% round_answers) == TRUE) {
+              0
+            }
+            else{
+              1
+            }
+          )
+        }
+        bingo_ans_mat <- matrix(bingo_board, 5, 5)
+        bingo_ans_mat[3, 3] <- 0
+        
+        win_type <- "No winner"
+        # verify the direction of the winning bingo set
+        for (k in 1:5) {
+          # check if there is winner by  row
+          if (sum(c(bingo_ans_mat[k, ])) == 0) {
+            win_type <- "won by row"
+            break
+          }
+          # check if there is winner by  column
+          if (sum(c(bingo_ans_mat[ ,k])) == 0) {
+            win_type <- "won by column"
+            break
+          }
+        }
+        
+        # check if there is a diagonal winner
+        if (sum(c(
+          bingo_ans_mat[1, 1],
+          bingo_ans_mat[2, 2],
+          bingo_ans_mat[3, 3],
+          bingo_ans_mat[4, 4],
+          bingo_ans_mat[5, 5]
+        )) ==
+        0 |
+        sum(c(
+          bingo_ans_mat[5, 1],
+          bingo_ans_mat[4, 2],
+          bingo_ans_mat[3, 3],
+          bingo_ans_mat[2, 4],
+          bingo_ans_mat[1, 5]
+        )) ==
+        0) {
+          win_type <- "won by diagonal"
+        }
+        
+        #check if there is a corner win
+        if(sum(c(
+          bingo_ans_mat[1, 1],
+          bingo_ans_mat[1, 5],
+          bingo_ans_mat[5, 1],
+          bingo_ans_mat[5, 5]
+        ))==
+        0){
+          win_type<-"won by corner"
+        }
+        
+        # append the winning bingo type to out total_wins vector
+        total_wins <- append(total_wins, win_type)
+      }
+      total_wins
+      
+      #append total wins to experiment_win vector
+      experiment_win<-append(experiment_win, total_wins)
+    }
+    experiment_win
+    }
+    
+#to check if there is a corner win in 20 games (check code)
+    bingo_game2(1,20)
+```
+
+ii). assume the game is repeated for 250 times, make a table with probability estimation for winning by row, column, diagonal, corner and probability of fail for 10 experiments
+
+```{r}
+experiments3_10<-bingo_game2(10,250)
+prop.table(table(experiments3_10))
+```
+
+iii). a histogram for the winning probability among 100 experiments (no need to be categorized by row/column, diagonal or corner
+
+```{r}
+#where 0 represents no winner and 1 a winner
+
+experiments3_100 <- bingo_game(100,250)
+numeric_wins3 <- 1 * (experiments3_100 != "No winner")
+hist(numeric_wins3,  breaks = 2, freq = FALSE)
+```
+
+iv). illustrate your findings comparing the table and histogram with part (e)
+Answer: 
+The probabilities of there being no winner are very close to each other at around 72%
+i,e 0.7188 for part e and 0.7204 for part f. Whether a winning type is added or not, the probability of not winning is pretty cnsistent. This is supported by the two histograms
+
+##QUESTION TWO
+#Diamond data set
+
+a). Download and import the diamond data set from Blackboard
+
+```{r}
+#setting the working directory
+setwd('~/MSU/Msc Mathematics/Statistical programming for Data Science/Homeworks/hw 2')
+
+#reading the data as a .csv file
+diamond<-read.csv("diamonds.csv")
+
+```
+
+b). Remove the “depth” column and rename the columns “x”, “y” and “z” as “length”, “width” and “depth”.
+
+```{r}
+#Transforming the data into a data frame
+diamond<-as.data.frame(diamond)
+
+#Removing the depth column
+diamond<-diamond[, -5]
+
+#Renaming  the x,y and z columns
+colnames(diamond)<-c("carat","cut","color","clarity","table","price",
+                     "length","width","depth")
+diamond
+
+```
+c).  The missing values are encoded differently in the data set, i.e. “missing”, “MISSING” and “NA”. Find the occurrence of each of them.
+
+Values encoded under MISSING
+```{r}
+diamond[diamond=="MISSING"]
+
+```
+
+Values encoded under missing
+```{r}
+diamond[diamond=="missing"]
+
+```
+
+Values encoded under "NA"
+```{r}
+diamond[diamond=="NA"]
+```
+
+
+d). Assign NA to all missing values found above
+
+```{r}
+diamond[diamond=="MISSING"]<-NA
+diamond[diamond=="missing"]<-NA
+diamond[diamond=="NA"]<-NA
+diamond
+```
+e). Find proportion of missing values per column
+```{r}
+colSums(is.na(diamond))/nrow(diamond)
+```
+
+f). Remove all missing values from the data set and create a new data set data.complete.
+
+```{r}
+data.complete<-na.omit(diamond)
+data.complete
+
+```
+g). Check the structure of the data set and convert them to the appropriate data types
+
+```{r}
+str(data.complete)
+```
+The table, price, length and depth columns are characters when they should be integers
+```{r}
+#converting the table, price, length and depth columns into integers
+data.complete$length<-as.numeric(data.complete$length)
+data.complete$depth<-as.numeric(data.complete$depth)
+
+str(data.complete)
+
+```
+
+
+h). For the numeric columns, replace the missing values with the column mean
+
+```{r}
+#Finding the means
+
+mean(data.complete$carat)
+mean(na.omit(data.complete$length))
+mean(data.complete$width)
+mean(na.omit(data.complete$depth))
+mean(data.complete$table)
+mean(data.complete$price)
+```
+```{r}
+#replacing the means in missing columns
+data.complete$carat[is.na(data.complete$carat)]<-mean(data.complete$carat)
+data.complete$length[is.na(data.complete$length)]<-mean(na.omit(data.complete$length))
+data.complete$width[is.na(data.complete$width)]<-mean(data.complete$width)
+data.complete$depth[is.na(data.complete$depth)]<-mean(na.omit(data.complete$depth))
+data.complete$table[is.na(data.complete$table)]<-mean(data.complete$table)
+data.complete$price[is.na(data.complete$price)]<-mean(data.complete$price)
+```
+
+i). Make the cut, color and clarity columns into factors
+
+```{r}
+data.complete$cut<-as.factor(data.complete$cut)
+data.complete$clarity<-as.factor(data.complete$clarity)
+data.complete$color<-as.factor(data.complete$color)
+str(data.complete)
+```
+
+j).Reorder the data frame by carat variable in the descending order and output the first 6 rows
+
+```{r}
+data.complete<-data.complete[order(-data.complete$carat), ]
+head(data.complete)
+```
+
+k). Take a subset of the data frame so that diamonds with at least 0.2 carat, I color or above (D is the highest colorless diamond grade), VVS1 or VVS2 clarity, price between $330 to $400 are kept. How many diamonds in the data set satisfies this condition?
+
+```{r}
+#find color levels
+data.complete$color
+
+sub_set<-subset(data.complete,carat>=0.2 & clarity %in% c("VVS1","VVS2") &
+                  price>=330 & price<=400 & color %in% c("I","J"))
+sub_set
+nrow(sub_set)
+```
+
