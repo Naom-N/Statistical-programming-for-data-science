@@ -1,0 +1,163 @@
+---
+title: "Regression methods"
+author: "Naom N"
+date: "2023-03-28"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
+library(tidyverse)
+```
+
+
+##QUESTION ONE
+
+
+```{r}
+#setting the working directory.
+setwd('~/MSU/Msc Mathematics/Statistical programming for Data Science/Homeworks/hw 5')
+
+#Reading the data
+cars<-read.table(file = "cars.txt")
+```
+
+(a) Fit a linear regression between mpg and disp and interpret the coefficients in the context. Also interpret the $R^2$
+
+```{r}
+mod1<-lm(mpg ~ disp, data = cars)
+summary(mod1)
+```
+
+Intercept: Given that disp = 0 (there is no relationship), the mpg of a car is 29.60 
+disp coefficient (-0.041):  On average, a car's mpg goes down by 0.041 if disp increases by a unit
+
+$R^2$ is 71.83. This is a good model as 71% of the variation in mpg is expalained by disp.
+
+(b) Plot the regression line with ggplot2. Do you think the linear regression captures the relationship between mpg and disp? If not, how would you fix it?
+
+```{r}
+ggplot(data = cars, aes(x = disp, y = mpg))+
+  geom_point()+
+  geom_smooth(method = "lm", se = FALSE)
+```
+The linear regression is a fair estimate of the relationship. However, there are more points on the lower side of the line. We can fix this by trying to fit a different regression line say quadratic.
+
+(c) Suppose the relationship between disp and mpg is not linear. Let’s add a quadratic term in the regression model, this makes a polynomial regression. Does the $R^2$ change? If so, what does this tell you about the model fitting?
+
+```{r}
+mod2<-lm(mpg ~ poly(disp, 2), data = cars) 
+summary(mod2)
+
+# cars1<-cars%>%mutate(dispsq = disp *disp)
+# mod21<-lm(mpg ~ disp + dispsq, data = cars1) 
+# summary(mod21f)
+#center the data to deal with multicollinearlity.
+```
+$R^2$ increases from 71% to 79%. This is slightly significant implying that the quadratic regression line fits better than the linear regression line.
+
+(d) Make a plot fitted with both the first-order regression line and the polynomial regression line in ggplot2. Use different colors.
+(Hint: Check ?geom_line and see how to make a line by specifying coordinates of points. You can obtained the fitted values by fitted(model). You will need to order the fitted values by disp in this case.)
+
+```{r}
+ggplot(data = cars, aes(x = disp, y = mpg))+
+  geom_point()+
+  geom_line(aes(sort(disp), fitted(mod2)[order(disp)]))+
+  geom_smooth(method = "lm", se = FALSE) #the colors are automatically different. Otherwise we an add the color = "".
+```
+
+(e) Formally test the difference between the simple linear regression and the polynomial regression with anova(). This method conducts a hypothesis test comparing the two models. The null hypothesis here is that the two models fit the data equally well. The alternative hypothesis is that the polynomial model fits the data better. Interpret the results at significance level of $\alpha$ = 0.05.
+
+```{r}
+anova(mod1,mod2)
+```
+
+The p value (0.0031) is less than $\alpha$ = 0.05. We reject the null hypothesis and conclude that the polynomial model fits the data better. 
+
+#QUESTION TWO
+
+
+MULTIPLE LINEAR REGRESION
+
+(a) Fit a multiple linear regression model of mpg on wt, am, and hp.
+(Hint: In mtcars, am (transmission) is coded as a numeric variable while it is a factor. Make sure to fix it in fitting the model.)
+• Interpret all coefficients in the context.
+• Are all variables significantly associated with mpg? If not, which one can be removed. Conduct a hypothesis test and illustrate the test results.
+
+```{r}
+cars$am<-as.factor(cars$am)
+mod3<-lm(mpg ~ wt + am + hp, data = cars)
+summary(mod3)
+
+```
+Intercept: Given that there is no relationship between mpg and the predictors, the mpg of a car is 34. 
+
+wt coefficient (-2.879):  On average, a car's mpg goes down by 2.879 if wt increases by a 1000 and all the other predictors are held constant.
+
+am1 coefficient (2.0837):   Given that all other predictors are held constant, the manual car will have 2.0837 effect on mpg compared to an automatic car.
+
+hp coefficient (-0.0374):  On average, a car's mpg goes down by 0.0374 if hp increases by one unit and all the other predictors are held constant.
+
+am is not significant as its p value (0.1412) is greater than $\alpha$ = 0.05. We conclude that it can be removed from the model.
+
+(b) Fit the multiple linear regression again by removing the insignificant predictor you found from the precious part. What changes do you observe on the $R^2$ and adjusted $R^2$?
+(Hint: When you are comparing models with different number of predictors, refer to the adjusted $R^2$ instead of $R^2$
+. Theoretically, the more predictors in the model the greater the $R^2$
+. While the adjusted $R^2$ is able to adjust $R^2$ based on the number of predictors in the model.)
+
+```{r}
+mod4<-lm(mpg ~ wt + hp, data = cars)
+summary(mod4)
+```
+The values both go down slightly ($R^2$ and adjusted $R^2$) but given the model reduces the number of predictors from 3 to 2, the change is small that it does not make a difference
+
+(c) Multicollinearity is a statistical concept where several predictors in a model are correlated. Check if there is multicollinearity issue in the model of part (a) with vif() from the car package. A general rule is that a predictor with VIF (variance inflation factor) greater than 5 has multicollinearity issue.
+
+```{r}
+library(car)
+vif(mod3)
+```
+Since all the values are less than 5, we can conclude that multicollinearity is not such a big problem. There is however some form of it as the values are all more than 1 with the highest indication of multicollinearity being weight.
+
+(d) Add one more variable qsec into the regression model in part (a) and check multicollinearity. What do you conclude?
+
+```{r}
+mod5<-lm(mpg ~ wt + as.factor(am) + hp + qsec, data = cars)
+vif(mod5)
+```
+All the values go up with hp being the most affected. Seems like qsec addition makes multicollinearity associated with hp go up more. . The predictor itself is an indication of a somewhat form of multicollinearity (3.216).
+
+(e) Output the correlation matrix for the predictors in the model of part (d) and manually check the multicollinearity issue. Is this consistent with your finding in part (d)? Explain.
+
+```{r}
+cars$am<-as.numeric(cars$am) #convert back to numeric to check for correlation
+cor(cars[c("am", "hp", "qsec")])
+```
+Yes. qsec is negatively highly correlated with hp(-0.71). It is also negatively correlated with am but not as much as it is with qsec.
+
+(f) Remove the variable hp from the previous model. And check multicollinearity with vif(). IS there still multicollinearity issue?
+
+```{r}
+mod6<-lm(mpg ~ wt + as.factor(am) + qsec, data = cars)
+vif(mod6)
+```
+The values go down  significantly indicating a decrease in multicollinearity. The decrease is more with qsec. Since the values are close to 1, there is not really a problem of multicollinearity.
+
+(g) Model Selection: Use stargazer package to report regression results of all three models above.
+(Hint: Check ?stargazer and set type = "text". If you want to get LaTeX code instead, try type = "latex".)
+
+```{r}
+#Note: There are 4 models in question 2
+
+library(stargazer)
+stargazer(mod3, type = "text")
+stargazer(mod4, type = "text")
+stargazer(mod5, type = "text")
+stargazer(mod6, type = "text")
+
+```
+
+(h) Based on the above comparison, which one do you think is the best model for explanation and which one is the best for prediction? Explain.
+
+Model 5 (where we added qsec) is good for explanation as it has the highest adjusted $R^2$. model 6 (without hp) is good for prediction as it still has among the highest adjusted $R^2$ values and it also deals with the multicollinearity problem. 
+
