@@ -1,0 +1,295 @@
+---
+title: "Classification"
+author: "Naom N"
+date: "2023-04-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
+```
+
+1. The data file credit-g.csv contains a credit dataset. The response variable is class. Description for other variables are provided on Blackboard. Read in the dataset and explore it. How many customers in the dataset have good credit?
+
+```{r}
+#setting working directory
+setwd('~/MSU/Msc Mathematics/Statistical programming for Data Science/Homeworks/hw 6')
+
+#loading the data
+credit<-read.csv("credit-g.csv")
+
+#reading the first few rows
+head(credit)
+```
+
+2. Use ggplot2 package to draw a barchart of credit_history grouped by class. The barchart should satisfy
+below criteria:
+• The number of customers under each credit history category should be grouped by class
+• Has a main title “Distribution of Credit History Grouped by Class”
+• Has x axis labeled as “Credit History”
+• Has y axis labeled as “Number of Customers”
+Explain what insights you can get from the plot regarding predicting customer credit class.
+(Hint: Set position argument in geom_bar for optimal visualization. For x label display, try theme(axis.text.x = element_text(angle = 45, hjust = 1)).)
+
+```{r}
+library(ggplot2)
+library(dplyr)
+credit%>%
+  group_by(class)%>%
+  ggplot(aes(credit_history))+
+  geom_bar(aes(fill = class))+
+  labs(title = "Distribution of Credit History Grouped by Class",
+       x = "Credit History",
+       y = "Number of Customers")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+\textbf{Note:}
+Customers under the existing paid credit history have the highest number of customers in the bank. It also has the highest number of customersin the class bad. 
+Customers with all paid and no credits/all paid have the lowest number in the bank.
+Customers with a credit history of critical/other existing credit have a majority of them falling under the class good.
+
+3. Use ggplot2 package to draw a boxplot of credit_amount grouped by class. Explain what insights you can get from the plot regarding predicting customer credit class.
+
+```{r}
+credit%>%
+  group_by(class)%>%
+  ggplot(aes(credit_amount))+
+  geom_boxplot(aes(fill = class))+
+  coord_flip()
+```
+\textbf{Note:}
+There are so many outliers(credit amounts) for both classes. The largest credit amount is from the class bad - someone with a higher credit amount is likely to be from the bad credit class.
+But we can not conclude so entirely as there are also outliers from the good credit class
+The median credit amount for both classes is almost the same though with the bad credit class having a slightly higher one.
+
+4. Randomly split the whole dataset as two parts: training set containing 80% of the data, and test set containing 20% of the data. (Hint: Remember to set seed for reproducibility.)
+
+```{r}
+#splitting the data
+index <- 1:nrow(credit)
+set.seed(1)
+train_index <- sample(index, round(length(index)*0.8))
+train_set <- credit[train_index,]
+test_set <- credit[-train_index,]
+
+#printing the first few rows of the train and test sets
+head(train_set)
+head(test_set)
+```
+
+5. Conduct a logistic regression in the training dataset to predict bad credit customers in the training set, using all other variables as predictors. Treat “bad” as the positive class and “good” as negative class. That is, the following model specification is used:
+$logit(class = bad|X) = \beta _{0} + \beta _{1}X_{1} + \beta _{2}X_{2} + ... + \beta _{p}X_{p}$
+(Hint: In this data set, the class level “bad” is set as the default reference group. Please re-arrange the level such that the reference group is “good” by relevel.)
+
+```{r}
+#converting class from character to factor - to apply relevel
+train_set$class<-as.factor(train_set$class)
+
+#using relevel to arrange the levels
+train_set$class<-relevel(train_set$class, ref = "good")
+
+#logistic regression with all variables
+logit.mod <- glm(class ~.,family=binomial(link='logit'), data = train_set)
+
+```
+
+(a) Identify variables that have significant positive or negative effects $(\alpha = 0.05)$. Do these (positive/negative) directions of these effects make sense? Are the logistic regression results consistent with your findings in Question 2 and 3?
+(Hint: A categorical variable is said to be significant if at least one of the levels is significant.)
+
+```{r}
+summary(logit.mod)
+```
+\textbf{Note:}
+\textbf{Significant variables}
+
+Within credit history:
+'critical/other existing credit' has a p-value of 0.005546 which is less than 0.05 and is very significant in predicting the class in this category.  
+'no credits/all paid' has a p-value of 0.847383. It is not as useful as the above category.
+Since one of the levels is significant, credit history is significant in predicting the class and is in line with Q2.
+
+For credit amount:
+credit_amount has a p-value of 0.005042 which is less than 0.05. It is also significant in predicting the class and is in line with Q3.
+
+\textbf{Other significant variables are:} 
+checking_status, duration, savings_status, installment_commitment, employment, personal_status, other_payment_plans and foreign_worker.
+All these have p-values that are less than $\alpha = 0.05$.
+
+\textbf{Insignificant variables:}
+purpose, residence_since, property_magnitude, age, existing_credits, housing, job, num_dependents and own_telephone.
+All these have a p-value that is greater than $\alpha = 0.05$.
+
+(b) Evaluate the performance of the logistic regression on the test set. Identify a customer as “bad” credit customer if the predicted odds is greater than 0.5. Calculate overall accuracy, sensitivity, and specificity. Which measure is best to evaluate how the model predicts bad credit customers? Does this logistic regression model do a good job in classifying bad credit customers?
+(Hint: The purpose of this data set is to detect “bad” credit customers, classify a “good” credit customer to “bad” wouldn’t be a problem while classifying a “bad” credit customer to “good” would be a concern. As a result, )
+
+```{r}
+library(caret)
+#Calculating the probability for class for test data set
+test_probs <- predict(logit.mod, newdata = test_set, type="response")
+
+# Calculating the predicted class
+test_preds <- ifelse(test_probs >.5, "bad", "good")
+
+#changing class to factor in test_set
+test_set$class<-as.factor(test_set$class)
+
+#using relevel to arrange the levels
+test_set$class<-relevel(test_set$class, ref = "good")
+
+# Show confusion matrix
+confusionMatrix(as.factor(test_preds),test_set$class)
+```
+
+\textbf{Note:}
+Overall accuracy:0.74
+Sensitivity : 0.8797          
+Specificity : 0.4627 
+
+There are 36 bad credit customers that are classified as good credit customers. The number is more than those that are classified correctly as bad credit customers. 
+
+Specificity is bad (46%) therefore this model does not do a good job at predicting bad credit customers.
+
+6. Linear Discreminant Analysis
+(a) Perform LDA on the training data in order to predict class using only the variables that are found significantly impacting the credit class in the logistic regression analysis (include the whole categorical variable even some levels are not significant in logistic regression).
+
+```{r}
+library(MASS)
+lda.mod <- lda(class ~ checking_status + duration + credit_history + credit_amount + savings_status + employment + installment_commitment + personal_status + other_payment_plans + foreign_worker, data = train_set)
+
+lda.mod
+
+```
+
+(b) Visualize the LDA result.
+
+```{r}
+#a plot of the response as classified by the LDA classifier
+plot(lda.mod)
+
+#calculating the in-sample prediction
+lda.preds_insample <- predict(lda.mod)
+
+#Visualize classification result
+plot(lda.preds_insample$x, lda.preds_insample$class, 
+     col=c("green","red"), #[credit$class],
+     xlab = 'LD1', ylab = 'Predicted Class')
+
+```
+
+(c) Calculate overall accuracy, sensitivity, and specificity on the test dataset. Does the model do a good job in classifying bad credit customers?
+
+```{r}
+lda.preds <- predict(lda.mod, newdata = test_set, type = "response")
+confusionMatrix(as.factor(lda.preds$class),test_set$class)
+```
+\textbf{Note:}
+Overall accuracy:0.735
+Sensitivity : 0.8872         
+Specificity : 0.4328
+
+The specificity percentage is still low (43%). The model does not do a good job in classifying bad credit customers
+
+
+7. K-Nearest Neighbor
+(a) Perform KNN in the training data in order to predict class using only the variables that are found significantly impacting the credit class in the logistic regression analysis (include the whole categorical variable even some levels are not significant in logistic regression). Try both K = 5 and K = 10. (Hint: Convert categorical variables to numeric ones with as.integer().)
+
+```{r}
+#represent the variables as numbers
+library(class)
+
+#Convert categorical variables to factors 
+test_set<-test_set%>%mutate(across(c(1,3,6,7,9,14,20), as.factor))
+train_set<-test_set%>%mutate(across(c(1,3,6,7,9,14,20), as.factor))
+
+#convert the same from factors to numeric
+test_set<-test_set%>%mutate(across(c(1,3,6,7,9,14,20), as.integer))
+train_set<-test_set%>%mutate(across(c(1,3,6,7,9,14,20), as.integer))
+
+# fit the k-NN model to the training dataset
+# Select the true values of the response in training set
+cl <- train_set[,"class"]
+
+# Use knn for k = 5, 10
+# need to use only significant columns from both train and test data sets.
+knn5 <- knn(train_set[ ,c(1,2,3,5,6,7,8,9,14,20)],
+            test_set[ ,c(1,2,3,5,6,7,8,9,14,20)], cl, k = 5) 
+
+
+knn10 <- knn(train_set[ ,c(1,2,3,5,6,7,8,9,14,20)],
+             test_set[ ,c(1,2,3,5,6,7,8,9,14,20)], cl, k = 10)
+```
+
+(b) Calculate overall accuracy, sensitivity, and specificity on the test data for both models above. Which K does a better job in classifying bad credit customers?
+
+```{r}
+# Confusion matrix and statistics, k = 5
+confusionMatrix(as.factor(knn5),as.factor(test_set$class), positive = "good")
+
+# Confusion matrix and statistics, k = 10
+confusionMatrix(as.factor(knn10),as.factor(test_set$class), positive = "good")
+
+```
+\textbf{Note:}
+
+\textbf{K = 5}
+
+Overall accuracy:0.725
+Sensitivity : 0.8797         
+Specificity : 0.4179
+
+\textbf{K = 10}
+
+Overall accuracy:0.695
+Sensitivity : 0.9398         
+Specificity : 0.2090
+
+k = 5 does a better job of classifying bad credit customers. Specificity here is 42% compared to 21% with k = 10
+
+(c) Tune the hyperparameter k for KNN from 1 to 50. Also visualize accuracy, sensitivity, specificity and balance accuracy in the same plot. Which k would you choose based on the measure you identified in 5(b)? Explain.
+
+```{r}
+accuracy <- NULL
+sensitivity <-NULL
+specificity <- NULL
+
+for(i in 1:50) {
+  knn.fit <- knn(train_set[ ,c(1,2,3,5,6,7,8,9,14,20)],
+                 test_set[ ,c(1,2,3,5,6,7,8,9,14,20)], cl, k = i)
+  accuracy <- c(accuracy, mean(knn.fit == test_set$class))
+  sensitivity <- c(sensitivity, sensitivity(as.factor(knn.fit),
+                                            as.factor(test_set$class), positive = "good"))
+  specificity <- c(specificity, specificity(as.factor(knn.fit),
+                                            as.factor(test_set$class), negative = "bad"))
+}
+
+balanced_accuracy <- (sensitivity + specificity)/2
+
+plot(1:50, accuracy, type = "l" ,col = "red", 
+     ylab = "Measures", xlab = "k",ylim = c(0.0, 1.0))
+
+lines(1:50, sensitivity, type = "l", col = "blue")
+
+lines(1:50, specificity, type = "l", col = "green")
+
+lines(1:50, balanced_accuracy, type = "l", col = "orange")
+
+legend("topright", legend = c("accuracy","sensitivity","specificity", "balanced accuracy"),
+       col = c("red","blue","green","orange"), lty = 1)
+```
+\textbf{Note:}
+The best k is seen to below 10. More close to 5 than 10. A k of 5 (or less than 5) will be appropriate.
+
+8. Compare logistic regression, LDA, and KNN. Which model performs best for predicting bad credit customers? Explain.
+
+\begin{table}[h!]
+    \centering{Comparison between logistic regression, LDA and KNN}
+    \begin{tabular}{|c|c|c|c|}
+    \textbf{ } & \textbf{Logistic regression} & \textbf{LDA} & \textbf{KNN, k = 5}\\
+    \hline
+       accuracy  & 74.0 & 73.5 & 72.5\\
+        sensitivity & 88.0 & 88.7 & 88.0 \\
+        specificity & 46.2 & 43.2 & 41.8 \\
+    \end{tabular}
+\end{table}
+
+KNN (k = 5) has better specificity (41.8%) compared to the other models. It is the better model at predicting bad credit customers. 
+
