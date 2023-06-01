@@ -1,0 +1,280 @@
+---
+title: "MTH 696 - FINAL PROJECT"
+subtitle: "FINAL GRADE PREDICTION"
+author: "Naom N"
+date: "2023-04-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
+library(tidyverse)
+library(caret)
+library(MASS)
+```
+
+\textbf{EXPLORATORY ANALYSIS}
+
+In this section, we will prepare our data and visualize some of the relationships between variables.
+
+```{r}
+#setting working directory
+setwd('~/MSU/Msc Mathematics/Statistical programming for Data Science/Final project')
+
+#Read the data
+math<-read.table("student-mat.csv",sep=";",header=TRUE)
+french<-read.table("student-fre.csv",sep=";",header=TRUE)
+
+#Properly code numeric columns representing levels.
+math <- math%>%
+  mutate(across(c(7,8,13,14,15,24,25,26,27,28,29),as.factor))
+
+french <- french%>%
+  mutate(across(c(7,8,13,14,15,24,25,26,27,28,29), as.factor))
+
+data<-merge(math,french,by=c("school","sex","age","address","famsize","Pstatus",
+                             "Medu","Fedu","Mjob", "Fjob","reason","nursery","internet"))
+
+#Check the number of rows
+nrow(data)
+
+#Check dimension of the individual sets before merging
+dim(math)
+dim(french)
+
+#The merged data set dimensions
+dim(data)
+
+```
+```{r, eval=FALSE}
+#Print the first few rows
+head(data)
+```
+
+To ensure there is no confusion in the column names, we are going to append the subject name to the grade
+
+```{r}
+
+data<-data%>%
+  rename(s1math = S1.x, s2math = S2.x, s3math = S3.x, 
+         s1french = S1.y, s2french = S2.y, s3french = S3.y)
+
+#change the french score into a binary 
+data%>%
+  ggplot(aes(y = s3french, x = 1:nrow(data)))+
+  geom_point(aes(color = school))+
+  labs(title = "French Final Grade",
+       y = "Grade",
+       x = NULL)
+```
+\textbf{Summary}
+
+There seems to be more poor final french scores from the school MS than GP. 
+The number of students from the school Ms in this data also seems to be low. We can confirm this by tabulating the data. Most students seems to have a score between 10 - 15
+
+```{r}
+table(data$school)
+```
+Out of the total 382, there are only 40 students from the school MS.
+
+
+```{r, message=FALSE, warning=FALSE}
+data%>%
+  ggplot(aes(s3french))+
+  geom_histogram(fill = "blue")+
+  facet_wrap(~school)+
+  labs(x = "French final grade")
+```
+The histograms above show that the statement prior is true.
+They also help us see that GP has a somewhat normal distribution other than for the low scores which make it skewed a little to the left while MS does not really show has the distribution.
+
+We will also visualize how studytime is related to grade and correlations between the grades as shown below
+
+```{r}
+data%>%
+  ggplot(aes(y = s3french, x = 1:nrow(data)))+
+  geom_point(aes(color = studytime.y))+
+  labs(title = "French Final Grade",
+       y = "Grade",
+       x = NULL)
+```
+\textbf{Note:}
+The plot shows that low grade students studies for 1(less than 2 hours) or 2(2 to 5 hours). 
+
+```{r}
+#French final and math final
+cor(data$s3french, data$s3math)
+
+#French final and second period grade
+cor(data$s3french, data$s2french)
+
+#French final and first period grade
+cor(data$s3french, data$s1french)
+```
+There is a somewhat low correlation between the french and math final grades but high correlation between the French grades
+
+
+\textbf{LINEAR REGRESSION}
+
+\textbf{Predicting the Final Grade as a continous variable}
+
+In this section, we will use the stepwise variable selection and p-values to note significant attributes
+
+```{r}
+model1<-lm(s3french ~ ., data = data)
+```
+```{r, eval=FALSE}
+summary(model1)
+```
+
+\textbf{Note:}
+
+The full model gives us a pretty high adjusted $R^2$ value (83.8%). That is 84% of the variation in the french final grade can be explained by all attributes being in the model. However, this is a cumbersome model and we will try to reduce this.
+
+\textbf{Significant variables are:}
+school, traveltime.x, failures.x, Dalc.x (workday alcohol consumption) , failures.y and s2french.
+This is in line with the results from our visualization.
+
+\textbf{Somewhat significant variables are:}
+sex and Fjob
+
+
+By the stepwise variable selection we get, the following below model as the most optimal with  AIC=144.74.
+
+```{r, eval=FALSE}
+step.model.AIC<-stepAIC(model1, direction = "both") 
+
+```
+    
+```{r}
+model2<- lm(s3french ~ school + sex + age + Pstatus + Mjob + reason + internet + 
+    guardian.x + failures.x + Dalc.x + absences.x + s1math + 
+    traveltime.y + studytime.y + failures.y + absences.y + s1french + 
+    s2french, data = data)
+
+summary(model2)
+```
+\textbf{Note:}
+the adjusted $R^2$ goes up to 84.6%. This is a good model 
+
+\vspace{5pt}
+
+\textbf{LOGISTIC REGRESSION}
+
+\textbf{ Predicting the Final grade as a binary response}
+
+```{r}
+#Subset the data to remain with only the significant variables
+data1<-data[ ,c(1,2,3,6,9,11,13,14,17,27,30,31,35,36,37,50,51,52,53)]
+
+#Convert final french grade to a binary response
+data1$s3french<-ifelse(data1$s3french>=10, "pass", "fail") 
+
+#Barplot of final french grade as a binary
+data1%>%
+  ggplot(aes(s3french))+
+  geom_bar(aes(fill = school))+
+  facet_wrap(~sex)
+
+```
+
+Next we train and test the model above to see how well it predicts the scores and run a logistic regression model on the significant variables from part 1.
+
+```{r, message=FALSE, warning=FALSE}
+#Check s3french class
+class(data1$s3french)
+
+#Convert french final grade from character to factor 
+data1$s3french<-as.factor(data1$s3french)
+
+#splitting the data
+index <- 1:nrow(data1)
+set.seed(1)
+train_index <- sample(index, round(length(index)*0.8))
+train_set <- data1[train_index,]
+test_set <- data1[-train_index,]
+
+
+#Logistic regression with all variables (significant)
+logit.model <- glm(s3french ~.,family=binomial(link='logit'), data = train_set)
+
+```
+To identify variables that have a significant effect on the final grade, we use the function summary on the model
+
+```{r}
+summary(logit.model)
+```
+\textbf{Note:}
+
+Below would have been the results of the logistic regression model had I not changed level responses into factors and treated them as numerical variables.
+
+\textcolor{green}{The only significant variable (p-value<$\alpha = 0.05$) is the second period grade(s2french) with a p-value of 0.0487. The other somewhat close p-values are:
+first period grade (s1french) = 0.089
+school (MS) = 0.0863
+reason (reputation of the school) = 0.0941 .
+internet (yes - internet access at home) = 0.0942 .
+traveltime (from the math data set)  = 0.0703 .
+failures (from the math data set) =0.0980 .}
+
+Otherwise, as the model above shows, there seems to be no significant variable.
+
+\textbf{CLASSIFICATION}
+
+```{r, message=FALSE, warning=FALSE}
+#Calculating the probability for s3french for test data set
+test_probs <- predict(logit.model, newdata = test_set, type="response")
+
+# Calculating the predicted class
+test_preds <- ifelse(test_probs >.5, "pass", "fail")
+
+
+#using relevel to arrange the levels
+test_set$s3french<-relevel(test_set$s3french, ref = "pass")
+
+# Show confusion matrix
+confusionMatrix(as.factor(test_preds),test_set$s3french)
+```
+The model has an overall accuracy of 86.84%. It does a good job in predicting those students that will pass (sensitivity = 88.89%) and is average on predicting those who will fail(specificity = 50.00%).
+
+
+\textbf{Classification without first and second period grades}
+
+```{r, message=FALSE, warning=FALSE}
+#Remove s1french and s2french columns
+data2<-data1[-c(17,18)]
+
+
+#splitting the data
+index.1 <- 1:nrow(data2)
+set.seed(2)
+train_index.1 <- sample(index.1, round(length(index.1)*0.8))
+train_set.1 <- data2[train_index.1,]
+test_set.1 <- data2[-train_index.1,]
+
+
+#Logistic regression with all variables (significant)
+logit.model.1 <- glm(s3french ~.,family=binomial(link='logit'), data = train_set.1)
+
+summary(logit.model.1)
+
+#Calculating the probability for s3french for test data set
+test_probs.1 <- predict(logit.model.1, newdata = test_set.1, type="response")
+
+# Calculating the predicted class
+test_preds.1 <- ifelse(test_probs.1 >.5, "pass", "fail")
+
+
+#using relevel to arrange the levels
+test_set.1$s3french<-relevel(test_set.1$s3french, ref = "pass")
+
+# Show confusion matrix
+confusionMatrix(as.factor(test_preds.1),test_set.1$s3french)
+
+```
+After removing s1french and s2french, schook, Dalc.x and absences.y  become significant as their p-values are less than $\alpha = 0.05$. Reason, failure and travel time also become somewhat significant if $\alpha = 0.10$ is considered.
+
+Overall accuracy goes up to 88.16%
+Sensitivity goes up to 97.01%
+Specificity goes down to 22.22 %
+
+
